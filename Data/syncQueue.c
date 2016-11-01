@@ -9,7 +9,6 @@
 
 static const int linkedMessageSize = sizeof(struct LinkedMessage);
 
-
 struct LinkedQueue ConstructLinkedQueue(int size)
 {
 	struct LinkedQueue result;
@@ -43,8 +42,6 @@ struct LinkedQueue ConstructLinkedQueue(int size)
 
 int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length)
 {
-	//fprintf(stdout, "Dequeue, length: %d\n", length);
-
     pthread_mutex_lock( &(queue -> Sync) );
 
 	// подсчет свободного места
@@ -69,12 +66,9 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
     	}
     }
 
-
-	//fprintf(stdout, "freeSpace: %d, count: %d, tail: %d, head: %d\n",freeSpace, queue->Count,queue->BufferTail,queue->BufferHead);
-
 	if (freeSpace < messageLength)
 	{
-		fprintf(stdout, "Can't dequeue, messageLength: %d, tail: %d, head: %d\n", messageLength, queue->BufferTail, queue->BufferHead);
+		fprintf(stdout, "Can't dequeue element, not enough space, messageLength: %d, tail: %d, head: %d\n", messageLength, queue->BufferTail, queue->BufferHead);
 		pthread_mutex_unlock( &(queue->Sync) );
 		return -1;
 	}
@@ -86,38 +80,13 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
 	newMessage->Next = NULL;
 	newMessage->PositionInBuffer = queue->BufferHead;
 
-//	fprintf(stdout, "queue->Buffer + queue->BufferHead: %d\n", queue->Buffer + queue->BufferHead);
-//	fprintf(stdout, "newMessage: %d\n", newMessage);
-//	fprintf(stdout, "newMessage->Length: %d\n", newMessage->Length);
-//	fprintf(stdout, "&(newMessage->Length): %d\n", &(newMessage->Length));
-//	fprintf(stdout, "linkedMessageSize: %d\n", linkedMessageSize);
-
-	//exit(EXIT_FAILURE);
-
-	//newMessage.PositionInBuffer =  queue->BufferHead;
-  //  fprintf(stdout, "newMessage.PositionInBuffer: %d\n", newMessage.PositionInBuffer);
-
 	queue->BufferHead += length + linkedMessageSize;
 
-	//fprintf(stdout, "new message: %d\n", (int)(&newMessage));
-	// вставляем newMessage в очередь
-	if (queue->Tail == NULL)
-	{
-		queue->Tail = newMessage;
-	//	puts("Add tail");
-	}
-	if (queue->Head != NULL)
-	{
-	//    fprintf(stdout, "add next, tail: %d, head: %d, next: %d\n", (int)(queue->Tail), (int)(queue->Head), (int)(queue->Head->Next));
-		queue->Head->Next = newMessage;
-	//    fprintf(stdout, "add next, tail: %d, head: %d, next: %d\n", (int)(queue->Tail), (int)(queue->Head), (int)(queue->Head->Next));
-	}
+	if (queue->Tail == NULL) queue->Tail = newMessage;
+	if (queue->Head != NULL) queue->Head->Next = newMessage;
 	queue->Head = newMessage;
-  //  fprintf(stdout, "add next, tail: %d, head: %d, next: %d\n", (int)(queue->Tail), (int)(queue->Head), (int)(queue->Head->Next));
 
 	(queue->Count)++;
-    //fprintf(stdout, "queue->BufferHead: %d\n", queue->BufferHead);
-  //  fprintf(stdout, "queue->Count: %d\n", queue->Count);
 
 	pthread_cond_signal( &(queue->DataAvailable) );
 
@@ -128,23 +97,18 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
 
 int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 {
-  //  puts("Enqueue");
-
 	pthread_mutex_lock( &(queue->Sync) );
 
     if (queue->Count == 0) pthread_cond_wait( &(queue->DataAvailable), &(queue->Sync) );
 
     int length = queue->Tail->Length;
-    data = queue->Tail->Data;
+    data = memmove(data, queue->Tail->Data, length);
     (queue->Count)--;
 
     // очередь не пустая
 	if(queue->Tail->Next != NULL) {
-	 //   fprintf(stdout, "queue->Tail->PositionInBuffer: %d\n", queue->Tail->PositionInBuffer);
-	 //   fprintf(stdout, "queue->Tail->Next->PositionInBuffer: %d\n", queue->Tail->Next->PositionInBuffer);
 	    queue->Tail = queue->Tail->Next;
 		queue->BufferTail = queue->Tail->PositionInBuffer;
-	  //  fprintf(stdout, "queue->Tail->PositionInBuffer: %d\n", queue->Tail->PositionInBuffer);
 	}
 	// очередь пустая
 	else
@@ -152,9 +116,6 @@ int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 		queue->Head = queue->Tail = NULL;
 		queue->BufferTail = queue->BufferHead;
 	}
-
-  //  fprintf(stdout, "queue->BufferTail: %d\n", queue->BufferTail);
-  //  fprintf(stdout, "queue->Count: %d\n", queue->Count);
 
 	pthread_mutex_unlock( &(queue->Sync) );
 
