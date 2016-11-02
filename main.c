@@ -17,7 +17,7 @@ static void *process_messages_function( void *arg )
 {
     puts("Start process_messages_function");
 
-	Connect("192.168.0.102", 12346, (struct LinkedQueue *) arg);
+	Connect("192.168.0.101", 12346, (struct LinkedQueue *) arg);
 	return 0;
 }
 

@@ -7,6 +7,8 @@
 
 #include "socket.h"
 
+static int Parse(struct LinkedQueue *queue, char* buffer, int count);
+
 int Connect(const char* ip, int port, struct LinkedQueue *queue)
 {
     int sock;
@@ -34,19 +36,54 @@ int Connect(const char* ip, int port, struct LinkedQueue *queue)
 
     //keep communicating with server
     int bytesReceived;
+    int bytesLeft = 0;
     while(1)
     {
         //Receive a reply from the server
-    	bytesReceived = recv(sock,  server_reply, 2000, 0);
+    	bytesReceived = recv( sock, server_reply + bytesLeft, 2000, 0 );
         if(bytesReceived < 0)
         {
             puts("recv failed");
             break;
         }
 
-        DequeueLinkedMessage(queue, server_reply, bytesReceived);
+        bytesLeft = Parse(queue, server_reply, bytesReceived);
     }
 
     close(sock);
 	return 0;
+}
+
+static const int MinLength = 8;
+static const int MaxLength = 40;
+static int Parse(struct LinkedQueue *queue, char* buffer, int count)
+{
+	int crcPosition, crcValue, packetLength, bytesLeft, i;
+	for (i = 0; i < count; i++)
+	{
+		packetLength = buffer[i];
+		if (packetLength < MinLength || packetLength > MaxLength) continue;
+
+		// осталось недостаточно байт
+		crcPosition = i + packetLength;
+		if (crcPosition > count) break;
+
+		// подсчет контрольной суммы
+		crcValue = packetLength;
+		for (int j = 1; j < packetLength - 1; j++)
+			crcValue ^= buffer[i + j];
+
+		// все ок - копируем в очередь
+		if (crcValue == buffer[i + packetLength - 1])
+		{
+	        DequeueLinkedMessage(queue, buffer + i + 1, packetLength - 2);
+	        i += packetLength;
+		}
+	}
+
+	bytesLeft = count - i - 1;
+	// оставшиеся байты в начало массива
+	if (bytesLeft > 0) memmove(buffer, buffer + i, bytesLeft);
+
+	return bytesLeft;
 }
