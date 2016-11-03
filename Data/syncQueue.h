@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdint.h>
 
 struct LinkedMessage
 {

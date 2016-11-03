@@ -18,11 +18,9 @@ struct LinkedQueue ConstructLinkedQueue(int size)
 		exit(EXIT_FAILURE);
 	}
 	result.BufferSize = size;
-	result.BufferHead = 0;
-	result.BufferTail = 0;
+	result.BufferHead = result.BufferTail = 0;
 
-	result.Head = NULL;
-	result.Tail = NULL;
+	result.Head = result.Tail = NULL;
 	result.Count = 0;
 
 	if (pthread_mutex_init( &(result.Sync), NULL ))
@@ -100,6 +98,8 @@ int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 	pthread_mutex_lock( &(queue->Sync) );
 
     if (queue->Count == 0) pthread_cond_wait( &(queue->DataAvailable), &(queue->Sync) );
+    // вызван DestructLinkedQueue
+    if (queue->Count == 0) return -1;
 
     int length = queue->Tail->Length;
     data = memmove(data, queue->Tail->Data, length);
@@ -124,6 +124,7 @@ int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 
 void DestructLinkedQueue(const struct LinkedQueue *queue)
 {
+	//pthread_cond_broadcast( &(queue->DataAvailable) );
 	free(queue->Buffer);
 }
 

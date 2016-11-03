@@ -7,13 +7,15 @@
 
 #include "socket.h"
 
+static volatile int stop;
+
 static int Parse(struct LinkedQueue *queue, char* buffer, int count);
 
-int Connect(const char* ip, int port, struct LinkedQueue *queue)
+int StartListen(const char* ip, int port, struct LinkedQueue *queue)
 {
     int sock;
     struct sockaddr_in server;
-    char server_reply[2000];
+    char server_reply[1000];
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1)
@@ -21,7 +23,6 @@ int Connect(const char* ip, int port, struct LinkedQueue *queue)
         printf("Could not create socket");
         return 1;
     }
-    puts("Socket created");
 
     server.sin_addr.s_addr = inet_addr(ip);
     server.sin_family = AF_INET;
@@ -32,19 +33,29 @@ int Connect(const char* ip, int port, struct LinkedQueue *queue)
         perror("connect failed. Error");
         return 1;
     }
-    puts("Connected\n");
+    fprintf(stdout, "Connected to server, ip: %s, port: %d\n", ip, port);
 
     //keep communicating with server
     int bytesReceived;
     int bytesLeft = 0;
-    while(1)
+
+    stop = 0;
+    while(!stop)
     {
         //Receive a reply from the server
-    	bytesReceived = recv( sock, server_reply + bytesLeft, 2000, 0 );
+    	bytesReceived = recv( sock, server_reply + bytesLeft, 800, MSG_DONTWAIT );
         if(bytesReceived < 0)
         {
-            puts("recv failed");
-            break;
+        	if (errno == EINTR) continue;
+			if (errno == EAGAIN)
+			{
+				usleep(10);
+				continue;
+			}
+
+			perror("recv failed, socket closed");
+		    close(sock);
+            return 1;
         }
 
         bytesLeft = Parse(queue, server_reply, bytesReceived);
@@ -54,28 +65,40 @@ int Connect(const char* ip, int port, struct LinkedQueue *queue)
 	return 0;
 }
 
+int StopListen()
+{
+	stop = 1;
+	return 0;
+}
+
 static const int MinLength = 8;
 static const int MaxLength = 40;
 static int Parse(struct LinkedQueue *queue, char* buffer, int count)
 {
-	int crcPosition, crcValue, packetLength, bytesLeft, i;
-	for (i = 0; i < count; i++)
+	int crcPosition, crcValue, packetLength, bytesLeft, i = 0;
+	while (i < count)
 	{
 		packetLength = buffer[i];
-		if (packetLength < MinLength || packetLength > MaxLength) continue;
+		if (packetLength < MinLength || packetLength > MaxLength)
+		{
+			i++; continue;
+		}
 
-		// осталось недостаточно байт
+		// осталось недостаточно байт для парсинга пакета
 		crcPosition = i + packetLength;
 		if (crcPosition > count) break;
 
 		// подсчет контрольной суммы
 		crcValue = packetLength;
 		for (int j = 1; j < packetLength - 1; j++)
-			crcValue ^= buffer[i + j];
+			crcValue ^= (unsigned char)buffer[i + j];
 
 		// все ок - копируем в очередь
-		if (crcValue == buffer[i + packetLength - 1])
+		if (crcValue == (unsigned char)buffer[i + packetLength - 1])
 		{
+			ushort id = htons(*(ushort *)(buffer + i + 1));
+			if (id != 0x1AA && id != 0x1A9) fprintf(stdout, "strange id: %hX\n", id);
+
 	        DequeueLinkedMessage(queue, buffer + i + 1, packetLength - 2);
 	        i += packetLength;
 		}
