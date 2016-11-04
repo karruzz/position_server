@@ -58,7 +58,7 @@ int StartListen(const char* ip, int port, struct LinkedQueue *queue)
             return 1;
         }
 
-        bytesLeft = Parse(queue, server_reply, bytesReceived);
+        bytesLeft = Parse(queue, server_reply, bytesReceived + bytesLeft);
     }
 
     close(sock);
@@ -75,18 +75,19 @@ static const int MinLength = 8;
 static const int MaxLength = 40;
 static int Parse(struct LinkedQueue *queue, char* buffer, int count)
 {
-	int crcPosition, crcValue, packetLength, bytesLeft, i = 0;
-	while (i < count)
+	int crcPosition, crcValue, packetLength, bytesLeft;
+	for (int i = 0; i < count; i++)
 	{
-		packetLength = buffer[i];
-		if (packetLength < MinLength || packetLength > MaxLength)
-		{
-			i++; continue;
-		}
+		packetLength = (unsigned char)buffer[i];
+		if (packetLength < MinLength || packetLength > MaxLength) continue;
 
 		// осталось недостаточно байт для парсинга пакета
 		crcPosition = i + packetLength;
-		if (crcPosition > count) break;
+		if (crcPosition > count) {
+			bytesLeft = count - i;
+			memmove(buffer, buffer + i, bytesLeft);
+			return bytesLeft;
+		}
 
 		// подсчет контрольной суммы
 		crcValue = packetLength;
@@ -96,17 +97,10 @@ static int Parse(struct LinkedQueue *queue, char* buffer, int count)
 		// все ок - копируем в очередь
 		if (crcValue == (unsigned char)buffer[i + packetLength - 1])
 		{
-			ushort id = htons(*(ushort *)(buffer + i + 1));
-			if (id != 0x1AA && id != 0x1A9) fprintf(stdout, "strange id: %hX\n", id);
-
 	        DequeueLinkedMessage(queue, buffer + i + 1, packetLength - 2);
-	        i += packetLength;
+	        i += packetLength - 1; // -1 потому что будет еще ++ в while
 		}
 	}
 
-	bytesLeft = count - i - 1;
-	// оставшиеся байты в начало массива
-	if (bytesLeft > 0) memmove(buffer, buffer + i, bytesLeft);
-
-	return bytesLeft;
+	return 0;
 }

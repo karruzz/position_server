@@ -42,31 +42,37 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
 {
     pthread_mutex_lock( &(queue -> Sync) );
 
-	// подсчет свободного места
-    int freeSpace = 0;
     int messageLength = linkedMessageSize + length;
 
-    freeSpace = queue->BufferHead >= queue->BufferTail
-    		? queue->BufferSize - queue->BufferHead
-    		: queue->BufferTail - queue->BufferHead;
+    int freeSpace = 0;
 
-    if (freeSpace < messageLength)
+    if (queue->BufferTail > queue->BufferHead) freeSpace = queue->BufferTail - queue->BufferHead;
+    else if (queue->BufferTail < queue->BufferHead)
     {
-    	if (queue->BufferTail == queue->BufferHead)
-    	{
-    		queue->BufferTail = queue->BufferHead = 0;
-    		freeSpace = queue->BufferSize;
-    	}
-    	else if (queue->BufferHead > queue->BufferTail && queue->BufferTail > messageLength)
+    	freeSpace = queue->BufferSize - queue->BufferHead;
+    	if (freeSpace < messageLength && queue->BufferTail > messageLength)
     	{
     		queue->BufferHead = 0;
     		freeSpace = queue->BufferTail;
     	}
     }
+    else
+    {
+    	if (queue->Count == 0){
+        	freeSpace = queue->BufferSize - queue->BufferHead;
+        	if (freeSpace < messageLength)
+        	{
+        		queue->BufferTail = queue->BufferHead = 0;
+        		freeSpace = queue->BufferSize;
+        	}
+    	}
+    	else freeSpace = 0;
+    }
 
 	if (freeSpace < messageLength)
 	{
 		fprintf(stdout, "Can't dequeue element, not enough space, messageLength: %d, tail: %d, head: %d\n", messageLength, queue->BufferTail, queue->BufferHead);
+		pthread_cond_signal( &(queue->DataAvailable) );
 		pthread_mutex_unlock( &(queue->Sync) );
 		return -1;
 	}
@@ -78,7 +84,7 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
 	newMessage->Next = NULL;
 	newMessage->PositionInBuffer = queue->BufferHead;
 
-	queue->BufferHead += length + linkedMessageSize;
+	queue->BufferHead += messageLength;
 
 	if (queue->Tail == NULL) queue->Tail = newMessage;
 	if (queue->Head != NULL) queue->Head->Next = newMessage;
@@ -87,7 +93,6 @@ int DequeueLinkedMessage(struct LinkedQueue *queue, const char *data, int length
 	(queue->Count)++;
 
 	pthread_cond_signal( &(queue->DataAvailable) );
-
 	pthread_mutex_unlock( &(queue->Sync) );
 
 	return 0;
@@ -99,7 +104,10 @@ int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 
     if (queue->Count == 0) pthread_cond_wait( &(queue->DataAvailable), &(queue->Sync) );
     // вызван DestructLinkedQueue
-    if (queue->Count == 0) return -1;
+    if (queue->Count == 0) {
+    	pthread_mutex_unlock( &(queue->Sync) );
+    	return -1;
+    }
 
     int length = queue->Tail->Length;
     data = memmove(data, queue->Tail->Data, length);
@@ -124,7 +132,7 @@ int EnqueueLinkedMessage(struct LinkedQueue *queue, char *data)
 
 void DestructLinkedQueue(const struct LinkedQueue *queue)
 {
-	//pthread_cond_broadcast( &(queue->DataAvailable) );
+	pthread_cond_broadcast( &(queue->DataAvailable) );
 	free(queue->Buffer);
 }
 
