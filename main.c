@@ -11,6 +11,7 @@
 
 #include "socket.h"
 #include "syncQueue.h"
+#include "processer.h"
 
 #define ACS_ID 0x1AA
 #define GYRO_ID 0x1A9
@@ -28,7 +29,6 @@ static void *print_messages_function( void *queue )
 {
     puts("Start print_messages_function");
 
-    ulong acsCount = 0, gyroCount = 0;
 	char server_reply[50];
     while(1)
     {
@@ -36,21 +36,25 @@ static void *print_messages_function( void *queue )
 
     	ushort id = htons(*(ushort *)server_reply);
     	ulong time = be64toh(*((ulong *)(server_reply + 2)));
-    	if (id == ACS_ID)
-    	{
-    		if (time - acsCount != 1) fprintf(stdout, "error acs step\n");
-    		acsCount = time;
-    	}
+    	ulong xbits = be64toh(*((ulong *)(server_reply + 10)));
+    	ulong ybits = be64toh(*((ulong *)(server_reply + 18)));
+    	ulong zbits = be64toh(*((ulong *)(server_reply + 26)));
 
-    	if (id == GYRO_ID)
-    	{
-    		if (time - gyroCount != 1) fprintf(stdout, "error gyro step\n");
-    		gyroCount = time;
-    	}
+    	if (id != GYRO_ID) continue;
 
-		if (id != ACS_ID && id != GYRO_ID) fprintf(stdout, "strange id: %hX\n", id);
+		struct GyroData gyro;
+		gyro.Id = GYRO_ID;
+		gyro.TimeStamp = time;
 
-    	//fprintf(stdout, "< %hX  %lu\n", id , time );
+		gyro.Point.X = *((double *)(&xbits));
+		gyro.Point.Y = *((double *)(&ybits));
+		gyro.Point.Z = *((double *)(&zbits));
+
+		ProcessGyro(&gyro);
+//		fprintf(stdout, "X %3.3f; Y %3.3f; Z %3.3f\n", gyro.Point.X,
+	//												   gyro.Point.Y,
+		//											   gyro.Point.Z );
+
     }
     return 0;
 }
@@ -58,6 +62,7 @@ static void *print_messages_function( void *queue )
 int main()
 {
 	struct LinkedQueue queue = ConstructLinkedQueue(8192);
+	ConstructProcesser();
 
     pthread_t sniffer_thread, print_thread;
     if (pthread_create( &sniffer_thread , NULL , &listen_messages_function , (void *) &queue) < 0)
