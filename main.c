@@ -12,15 +12,18 @@
 #include "socket.h"
 #include "syncQueue.h"
 #include "processer.h"
+#include "writer.h"
 
 #define ACS_ID 0x1AA
 #define GYRO_ID 0x1A9
+
+static int fd;
 
 static void *listen_messages_function( void *arg )
 {
     puts("Start process_messages_function");
 
-	StartListen("192.168.0.101", 12346, (struct LinkedQueue *) arg);
+	StartListen("192.168.0.102", 12346, (struct LinkedQueue *) arg);
 	return 0;
 }
 
@@ -50,17 +53,21 @@ static void *print_messages_function( void *queue )
 		gyro.Point.Y = *((double *)(&ybits));
 		gyro.Point.Z = *((double *)(&zbits));
 
-		ProcessGyro(&gyro);
-//		fprintf(stdout, "X %3.3f; Y %3.3f; Z %3.3f\n", gyro.Point.X,
-	//												   gyro.Point.Y,
-		//											   gyro.Point.Z );
+		struct GyroResult result;
+		if (ProcessGyro(&gyro, &result)) continue;
 
+		fprintf(stdout, "X %3.3f; Y %3.3f; Z %3.3f\n", result.Angle.X, result.Angle.Y, result.Angle.Z );
+
+		WriteToFile(fd, &result);
     }
     return 0;
 }
 
 int main()
 {
+	fd = CreateWriter("out.dat");
+	if (fd == -1) exit(EXIT_FAILURE);
+
 	struct LinkedQueue queue = ConstructLinkedQueue(8192);
 	ConstructProcesser();
 
@@ -81,6 +88,6 @@ int main()
  	pthread_join( print_thread, NULL);
 
 	DestructLinkedQueue(&queue);
+	CloseWriter(fd);
 	exit(EXIT_SUCCESS);
 }
-

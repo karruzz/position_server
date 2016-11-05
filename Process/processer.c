@@ -33,22 +33,29 @@ static int Ustirate(const struct GyroData *data)
 }
 
 static ulong lastTime = 0;
-void ProcessGyro(const struct GyroData *data)
+int ProcessGyro(const struct GyroData *data, struct GyroResult *result)
 {
-	if (Ustirate(data)) return;
-
-	if (lastTime != 0)
+	if (Ustirate(data))
 	{
-		double dt = 0.01;// (data->TimeStamp - lastTime) * 1.0e-9;
-		struct Point omega = PointMinus(&(data->Point), &omega0);
-		struct Point dangle = PointMultiply(&omega, dt);
-		struct Quaternion qderive = QuatDerivative(&q, &dangle);
-		q = QuatSum(&q, &qderive);
-
-		fprintf(stdout, "roll: %3.3f; pitch: %3.3f; yaw %3.3f\n", QuatRoll(&q), QuatPitch(&q), QuatYaw(&q));
+		lastTime = data->TimeStamp;
+		return 1;
 	}
 
+	double dt = (data->TimeStamp - lastTime) * 1.0e-9;
+	struct Point omega = PointMinus(&(data->Point), &omega0);
+	struct Point dangle = PointMultiply(&omega, dt);
+	struct Quaternion qderive = QuatDerivative(&q, &dangle);
+	q = QuatSum(&q, &qderive);
+
+	result->TimeStamp = data->TimeStamp;
+	result->Omega = data->Point;
+	result->Angle.X = QuatRoll(&q);
+	result->Angle.Y = QuatPitch(&q);
+	result->Angle.Z = QuatYaw(&q);
+
 	lastTime = data->TimeStamp;
+
+	return 0;
 }
 
 void DestructProcesser()

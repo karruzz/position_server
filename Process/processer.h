@@ -20,8 +20,16 @@ struct GyroData
 	struct Point Point;
 };
 
+struct GyroResult
+{
+	ulong TimeStamp;
+	struct Point Angle;
+	struct Point Omega;
+	struct Point Acs;
+};
+
 void ConstructProcesser();
-void ProcessGyro(const struct GyroData *data);
+int ProcessGyro(const struct GyroData *data, struct GyroResult *result);
 void DestructProcesser();
 
 #endif /* PROCESS_PROCESSER_H_ */
