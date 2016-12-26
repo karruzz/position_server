@@ -23,7 +23,7 @@ static void *listen_messages_function( void *arg )
 {
     puts("Start process_messages_function");
 
-	StartListen("192.168.0.102", 12346, (struct LinkedQueue *) arg);
+	StartListen("192.168.0.103", 12346, (struct LinkedQueue *) arg);
 	return 0;
 }
 
@@ -43,22 +43,40 @@ static void *print_messages_function( void *queue )
     	ulong ybits = be64toh(*((ulong *)(server_reply + 18)));
     	ulong zbits = be64toh(*((ulong *)(server_reply + 26)));
 
-    	if (id != GYRO_ID) continue;
-
 		struct GyroData gyro;
-		gyro.Id = GYRO_ID;
-		gyro.TimeStamp = time;
+		struct AcsData acs;
 
-		gyro.Point.X = *((double *)(&xbits));
-		gyro.Point.Y = *((double *)(&ybits));
-		gyro.Point.Z = *((double *)(&zbits));
+    	switch (id) {
+    		case(GYRO_ID) :
+					gyro.Id = GYRO_ID;
+					gyro.TimeStamp = time;
 
-		struct GyroResult result;
-		if (ProcessGyro(&gyro, &result)) continue;
+					gyro.Omega.X = *((double *)(&xbits));
+					gyro.Omega.Y = *((double *)(&ybits));
+					gyro.Omega.Z = *((double *)(&zbits));
 
-		fprintf(stdout, "X %3.3f; Y %3.3f; Z %3.3f\n", result.Angle.X, result.Angle.Y, result.Angle.Z );
+					struct GyroResult result;
+					if (ProcessGyro(&gyro, &result)) continue;
 
-		WriteToFile(fd, &result);
+					fprintf(stdout, ".");
+
+					WriteToFile(fd, &result);
+    				break;
+    		case(ACS_ID) :
+					acs.Id = ACS_ID;
+					acs.TimeStamp = time;
+
+					acs.Acs.X = (*((double *)(&xbits))) / 10.0;
+					acs.Acs.Y = (*((double *)(&ybits))) / 10.0;
+					acs.Acs.Z = (*((double *)(&zbits))) / 10.0;
+
+					ProcessAcs(&acs);
+
+    				break;
+    		default:
+    			break;
+    	}
+
     }
     return 0;
 }

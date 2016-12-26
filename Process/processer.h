@@ -17,7 +17,14 @@ struct GyroData
 {
 	ushort Id;
 	ulong TimeStamp;
-	struct Point Point;
+	struct Point Omega;
+};
+
+struct AcsData
+{
+	ushort Id;
+	ulong TimeStamp;
+	struct Point Acs;
 };
 
 struct GyroResult
@@ -30,6 +37,7 @@ struct GyroResult
 
 void ConstructProcesser();
 int ProcessGyro(const struct GyroData *data, struct GyroResult *result);
+int ProcessAcs(const struct AcsData *data);
 void DestructProcesser();
 
 #endif /* PROCESS_PROCESSER_H_ */

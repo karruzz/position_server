@@ -9,24 +9,20 @@
 #define MATHEMATICS_QUATERNION_H_
 
 #include <stdio.h>
-#include<math.h>
+#include <math.h>
+#include <axis.h>
 
 struct Quaternion
 {
 	double X, Y, Z, A;
 };
 
-struct Point
-{
-	double X, Y, Z;
-};
-
-struct Point PointMultiply(const struct Point *p, double k);
-struct Point PointMinus(const struct Point *p1, const struct Point *p2);
-
-struct Quaternion QuatFromPoint(const struct Point *p);
+struct Quaternion QuatFromAxis(const struct Axis *p);
+struct Quaternion QuatToAxis(const struct Axis *p);
 struct Quaternion QuatUnit(double angle, double x, double y, double z);
 struct Quaternion QuatMinus(const struct Quaternion *q1);
+struct Quaternion QuatConjugate(const struct Quaternion *q1);
+struct Quaternion QuatInverse(const struct Quaternion *q1);
 
 struct Quaternion QuatSum(const struct Quaternion *q1, const struct Quaternion *q2);
 struct Quaternion QuatSum1(const struct Quaternion *q, double s);
@@ -34,9 +30,12 @@ struct Quaternion QuatSum1(const struct Quaternion *q, double s);
 struct Quaternion QuatMultiply(const struct Quaternion *q1, const struct Quaternion *q2);
 struct Quaternion QuatMultiply1(const struct Quaternion *q, double k);
 
-struct Quaternion QuatDerivative(const struct Quaternion *q, const struct Point *omega);
+struct Quaternion QuatDevide1(const struct Quaternion *q, double k);
 
-double QuatNorm(const struct Quaternion *q);
+struct Quaternion QuatDerivative(const struct Quaternion *q, const struct Axis *omega);
+
+double QuatLength(const struct Quaternion *q);
+double QuatLengthSqr(const struct Quaternion *q);
 
 double QuatRoll(const struct Quaternion *q);  // крен
 double QuatPitch(const struct Quaternion *q); // тангаж
