@@ -58,8 +58,6 @@ static void *print_messages_function( void *queue )
 					struct GyroResult result;
 					if (ProcessGyro(&gyro, &result)) continue;
 
-					fprintf(stdout, ".");
-
 					WriteToFile(fd, &result);
     				break;
     		case(ACS_ID) :
