@@ -2,7 +2,8 @@
  * main.cpp
  *
  *  Created on: Jan 09, 2017
- *     Author: karruzz
+ *  Copyright © 2017-2080 Ilja Karasev. All rights reserved.
+ *     License: GNU GPL 3
  */
 
 #include <atomic>

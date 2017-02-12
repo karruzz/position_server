@@ -2,7 +2,8 @@
  * axis.cpp
  *
  *  Created on: Feb 12, 2017
- *     Author: karruzz
+ *  Copyright © 2017-2080 Ilja Karasev. All rights reserved.
+ *     License: GNU GPL 3
  */
 
 #include "axis.h"

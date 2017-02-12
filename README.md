@@ -1,0 +1,1 @@
+# Server for capturing phone position. Use position client for displaying data.
