@@ -7,8 +7,10 @@
  */
 
 #include "frame.h"
+#include <cstdio>
 
 #include <arpa/inet.h> //inet_addr
+
 
 static uint64_t be64toh_custom(uint64_t value){
 	union Data { char val[8]; uint64_t result; } data;
@@ -24,10 +26,17 @@ static uint64_t be64toh_custom(uint64_t value){
 	return data.result;
 }
 
+BinsFrame::BinsFrame()
+{
+}
+
+BinsFrame::~BinsFrame()
+{
+}
+
 bool BinsFrame::from_bytes(const uint8_t* buffer, size_t sz)
 {
 //	static double rotate_z = 0;
-
 	id = htons(*(uint16_t *)buffer);
 	timestamp = be64toh_custom(*((uint64_t *)(buffer + 2)));
 	uint64_t tmpx = be64toh_custom(*((uint64_t *)(buffer + 10)));

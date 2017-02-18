@@ -5,7 +5,6 @@
  *  Copyright © 2017-2080 Ilja Karasev. All rights reserved.
  *     License: GNU GPL 3
  */
-
 #include "sync_queue.h"
 
 void LockQueue::push(Packet&& frame)
@@ -15,7 +14,7 @@ void LockQueue::push(Packet&& frame)
 	static int warn_size = 0;
 	if (size > MAX_SIZE) {
 		if (++warn_size > 100) {
-			LogWarning() << "data list overflow\n";
+			Utils::LogWarning() << "data list overflow\n";
 			warn_size = 0;
 		}
 		return;

@@ -11,8 +11,9 @@
 
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 
-#include "point.h"
+#include "axis.h"
 
 enum BINS_TYPE{
 	UNKNOWN,
@@ -31,7 +32,10 @@ struct Frame
 struct BinsFrame : public Frame
 {
 	uint16_t id;
-	Point data;
+	Axis data;
+
+	BinsFrame();
+	~BinsFrame();
 
 	virtual bool from_bytes(const uint8_t* buffer, size_t sz);
 	virtual std::vector<uint8_t> to_bytes();

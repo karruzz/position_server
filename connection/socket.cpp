@@ -6,18 +6,30 @@
  *     License: GNU GPL 3
  */
 
-#include "log.h"
-#include "socket.h"
-#include "sync_queue.h"
-
 #include <sstream>
 #include <atomic>
+#include "socket.h"
+
+#include "log.h"
+#include "sync_queue.h"
+#include <sstream>
+
+#ifdef __linux__ 
+	#include <sys/socket.h>    //socket
+	#include <arpa/inet.h> //inet_addr
+	#include <unistd.h>
+#elif _WIN32
+	#include <windows.h>
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+#else
+	#error "NOT SUPPORTED"
+#endif
 
 static std::atomic_bool stop(false);
 
-static int split(LockQueue& queue, unsigned char* buffer, int count);
-
-void Socket::open_connection(const std::string& ip, int port)
+#ifdef __linux__ 
+static void open(int& sock, const std::string& ip, int port)
 {
 	struct sockaddr_in server;
 
