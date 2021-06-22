@@ -6,16 +6,30 @@
  *     License: GNU GPL 3
  */
 
-#include "log.h"
-#include "socket.h"
-#include "sync_queue.h"
-
 #include <sstream>
 #include <atomic>
+#include "socket.h"
+
+#include "log.h"
+#include "sync_queue.h"
+#include <sstream>
+
+#ifdef __linux__ 
+	#include <sys/socket.h>    //socket
+	#include <arpa/inet.h> //inet_addr
+	#include <unistd.h>
+#elif _WIN32
+	#include <windows.h>
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+#else
+	#error "NOT SUPPORTED"
+#endif
 
 static std::atomic_bool stop(false);
 
-void Socket::open_connection(const std::string& ip, int port)
+#ifdef __linux__ 
+static void open(int& sock, const std::string& ip, int port)
 {
 	struct sockaddr_in server;
 
@@ -27,12 +41,49 @@ void Socket::open_connection(const std::string& ip, int port)
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
 
-	LogInfo() << "trying to connect to server, ip: " << ip << ", port: " << port << "...\n";
+	Utils::LogInfo() << "trying to connect to server, ip: " << ip << ", port: " << port << "...\n";
 
 	if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
 		throw std::runtime_error("could not connect");
+}
+#elif _WIN32
+static void open(SOCKET& ConnectSocket, const std::string& ip, int port)
+{
+	WSADATA wsaData;
+	ConnectSocket = INVALID_SOCKET;
 
-	LogInfo() << "connected to server\n";
+	int iResult;
+	struct addrinfo *result = NULL,
+	                *ptr = NULL,
+	                hints;
+
+	// Initialize Winsock
+	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (iResult != 0) {
+		(std::stringstream() << "WSAStartup failed with error: " << iResult).str();
+		throw std::runtime_error("could not connect");
+	}
+
+	// Initialize Winsock
+	iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (iResult != 0) {
+		printf("WSAStartup failed with error: %d\n", iResult);
+		return 1;
+	}
+
+	ZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+}
+#else
+	#error "NOT SUPPORTED"
+#endif
+
+void Socket::open_connection(const std::string& ip, int port)
+{
+	open(sock, ip, port);
+	Utils::LogInfo() << "connected to server\n";
 }
 
 void Socket::close_connection()

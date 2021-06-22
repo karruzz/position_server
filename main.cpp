@@ -33,12 +33,12 @@ void set_thread_name(const char* name)
 void listen_messages(Socket& sock, LockQueue& queue, std::string ip, int port)
 {
 	set_thread_name("listen");
-	LogInfo() << "listen messages thread started\n";
+	Utils::LogInfo() << "listen messages thread started\n";
 
 	try {
 		sock.start_listen(ip.c_str(), port, queue);
 	} catch (const std::exception& e) {
-		LogError() << "listen thread: " << e.what();
+		Utils::LogError() << "listen thread: " << e.what();
 	}
 }
 
@@ -46,7 +46,7 @@ static std::atomic_bool stop_process(false);
 void process_messages(LockQueue& queue)
 {
 	set_thread_name("process");
-	LogInfo() << "process messages thread started\n";
+	Utils::LogInfo() << "process messages thread started\n";
 
 	Writer writer;
 	writer.open("out.dat");
@@ -82,19 +82,19 @@ void sig_wait()
 	for (;;) {
 		int sig = 0;
 		if (sigwait(&sset, &sig) != 0) {
-			LogError() << "ERROR: sigwait error\n";
+			Utils::LogError() << "ERROR: sigwait error\n";
 			continue;
 		}
 		switch (sig) {
 			case SIGINT:
 			case SIGTERM:
-				LogInfo() << "SIGTERM signal received, terminating\n";
+				Utils::LogInfo() << "SIGTERM signal received, terminating\n";
 				return;
 			case SIGHUP:
-				LogInfo() << "SIGHUP signal received\n";
+				Utils::LogInfo() << "SIGHUP signal received\n";
 				return;
 			default:
-				LogWarning() << strsignal(sig) << " signal, ignoring\n";
+				Utils::LogWarning() << strsignal(sig) << " signal, ignoring\n";
 		}
 	}
 }
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	listen_thr.join();
 	process_thr.join();
 
-	LogInfo() << "server stopped\n";
+	Utils::LogInfo() << "server stopped\n";
 
 	return 0;
 }

@@ -14,7 +14,7 @@
 
 struct Orientation
 {
-	const uint64_t header = 0xA5A5;
+//	const uint64_t header = 0xA5A5;
 	uint64_t timestamp;
 	Axis angle; // roll, pitch, yaw
 	Axis veloc; // gyros

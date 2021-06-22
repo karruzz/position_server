@@ -12,6 +12,8 @@
 #include <iostream>
 #include <sstream>
 
+namespace Utils {
+
 class Log
 {
 public:
@@ -57,6 +59,8 @@ Log& operator<<(Log& record, T&& t) {
 template <typename T>
 Log& operator<<(Log&& record, T&& t) {
 	return record << std::forward<T>(t);
+}
+
 }
 
 #endif /* LOG_H_ */
